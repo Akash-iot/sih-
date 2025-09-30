@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHER-EYE | Advanced Spider Map Network Analysis</title>
+    
+    <!-- vis.js CDN -->
+    <link href="https://unpkg.com/vis-network/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/vis-network/dist/vis-network.min.js"></script>
+    <script src="js/api-client.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); color: #fff; min-height: 100vh; display: flex; }
+        
+        .sidebar { 
+            width: 320px; background: rgba(42, 42, 60, 0.95); backdrop-filter: blur(20px);
+            padding: 25px; height: 100vh; position: fixed; overflow-y: auto; box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+        }
+        .sidebar .logo { font-size: 24px; font-weight: bold; color: #6b48ff; margin-bottom: 30px; }
+        .sidebar .logo::before { content: "🕸️"; margin-right: 12px; }
+        
+        .content { margin-left: 320px; flex: 1; display: flex; flex-direction: column; }
+        
+        .header { 
+            padding: 20px 25px; background: rgba(42, 42, 60, 0.95); backdrop-filter: blur(20px);
+            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+        .header h1 { font-size: 28px; font-weight: 700; color: #6b48ff; }
+        
+        .search-container { display: flex; gap: 15px; align-items: center; }
+        .search-input { 
+            padding: 12px 20px; border: 2px solid rgba(107, 72, 255, 0.3); border-radius: 25px; 
+            background: rgba(255, 255, 255, 0.1); color: #fff; width: 300px; font-size: 14px; outline: none; 
+        }
+        .search-input:focus { border-color: #6b48ff; box-shadow: 0 0 0 3px rgba(107, 72, 255, 0.2); }
+        .search-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+        
+        .btn { 
+            padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; 
+            font-size: 14px; font-weight: 600; transition: all 0.3s ease; 
+        }
+        .btn-primary { background: linear-gradient(135deg, #6b48ff 0%, #5a3de6 100%); color: white; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.3); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        
+        .network-container { 
+            flex: 1; position: relative; background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 50%, #0f3460 100%); 
+        }
+        #spider-network { width: 100%; height: 100%; }
+        
+        .network-controls { 
+            position: absolute; top: 20px; right: 20px; z-index: 1000; 
+            background: rgba(42, 42, 60, 0.95); padding: 15px; border-radius: 10px; 
+            display: flex; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+        }
+        
+        .info-panel { 
+            background: rgba(42, 42, 60, 0.95); border-radius: 12px; padding: 20px; 
+            margin-bottom: 20px; border: 1px solid rgba(107, 72, 255, 0.3); 
+        }
+        .info-panel h3 { color: #6b48ff; margin-bottom: 15px; font-size: 18px; }
+        .info-item { margin-bottom: 10px; font-size: 14px; }
+        .info-item strong { color: #6b48ff; }
+        
+        .analysis-results { 
+            background: rgba(42, 42, 60, 0.95); border-radius: 12px; padding: 20px; margin-bottom: 20px; 
+        }
+        .analysis-title { color: #ff6b48; margin-bottom: 15px; font-size: 18px; }
+        .risk-indicator { 
+            padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; 
+            text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; 
+        }
+        .risk-low { background: #d4edda; color: #155724; }
+        .risk-medium { background: #fff3cd; color: #856404; }
+        .risk-high { background: #f8d7da; color: #721c24; }
+        .risk-critical { background: #d1ecf1; color: #0c5460; }
+        
+        .legend { background: rgba(42, 42, 60, 0.95); border-radius: 12px; padding: 20px; }
+        .legend h3 { color: #6b48ff; margin-bottom: 15px; font-size: 18px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 12px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 50%; margin-right: 12px; border: 2px solid rgba(255,255,255,0.3); }
+        
+        .loading { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            text-align: center; color: #6b48ff; font-size: 18px; z-index: 1000; 
+        }
+        .loading-spinner { 
+            width: 50px; height: 50px; border: 4px solid rgba(107, 72, 255, 0.3); 
+            border-top: 4px solid #6b48ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .metrics-grid { 
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; 
+        }
+        .metric-item { 
+            background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px; text-align: center; 
+        }
+        .metric-value { font-size: 24px; font-weight: bold; color: #6b48ff; }
+        .metric-label { font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-top: 5px; }
+        
+        .export-dropdown { position: relative; display: inline-block; }
+        .export-menu {
+            position: absolute; top: 100%; right: 0; z-index: 1001;
+            background: rgba(42, 42, 60, 0.95); backdrop-filter: blur(20px);
+            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(107, 72, 255, 0.3); min-width: 150px;
+        }
+        .export-menu button {
+            display: block; width: 100%; padding: 10px 15px; border: none;
+            background: transparent; color: #fff; text-align: left;
+            cursor: pointer; border-radius: 4px; font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+        .export-menu button:hover {
+            background: rgba(107, 72, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">ETHER-EYE</div>
+        
+        <div class="info-panel">
+            <h3>🎯 Target Analysis</h3>
+            <div class="info-item"><strong>Address:</strong> <span id="targetAddress">None selected</span></div>
+            <div class="info-item"><strong>Network Depth:</strong> <span id="networkDepth">2</span></div>
+            <div class="info-item"><strong>Analysis Time:</strong> <span id="analysisTime">Never</span></div>
+        </div>
+        
+        <div class="analysis-results">
+            <h3 class="analysis-title">🤖 AI Risk Analysis</h3>
+            <div class="info-item">
+                <strong>Risk Level:</strong> 
+                <span class="risk-indicator risk-low" id="riskLevel">
+                    <span>🟢</span> Unknown
+                </span>
+            </div>
+            <div class="info-item"><strong>Connections:</strong> <span id="connectionCount">0</span></div>
+            <div class="info-item"><strong>Suspicious Activity:</strong> <span id="suspiciousActivity">None detected</span></div>
+            <div class="info-item"><strong>Exchange Interactions:</strong> <span id="exchangeCount">0</span></div>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <div class="metric-value" id="totalNodes">0</div>
+                <div class="metric-label">Total Nodes</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value" id="totalEdges">0</div>
+                <div class="metric-label">Connections</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value" id="riskScore">0%</div>
+                <div class="metric-label">Risk Score</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value" id="clusterSize">1</div>
+                <div class="metric-label">Cluster Size</div>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <h3>🎨 Node Types</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #6b48ff;"></div>
+                <span>Origin Address</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #28a745;"></div>
+                <span>Regular Address</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffc107;"></div>
+                <span>Exchange</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc3545;"></div>
+                <span>High Risk</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #17a2b8;"></div>
+                <span>Smart Contract</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="header">
+            <h1>Advanced Spider Map Network Analysis</h1>
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Enter Ethereum address or transaction hash...">
+                <button class="btn btn-primary" onclick="analyzeNetwork()">🕸️ Analyze</button>
+                <button class="btn btn-secondary" onclick="generateDemo()">🎮 Demo</button>
+            </div>
+        </div>
+        
+        <div class="network-container">
+            <div id="spider-network"></div>
+            <div class="network-controls">
+                <button class="btn btn-secondary" onclick="fitNetwork()">🔍 Fit</button>
+                <button class="btn btn-secondary" onclick="togglePhysics()">⚙️ Physics</button>
+                <div class="export-dropdown">
+                    <button class="btn btn-secondary" onclick="toggleExportMenu()">📥 Export ▼</button>
+                    <div id="exportMenu" class="export-menu" style="display: none;">
+                        <button onclick="exportNetwork('png')">🖼️ Export PNG</button>
+                        <button onclick="exportNetwork('csv')">📊 Export CSV</button>
+                        <button onclick="exportNetwork('json')">📄 Export JSON</button>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="resetView()">↻ Reset</button>
+            </div>
+            
+            <div id="loading" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <div>Analyzing network relationships...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let network = null;
+        let networkData = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
+        let physicsEnabled = true;
+        let apiClient = null;
+
+        // Initialize
+        window.addEventListener('load', () => {
+            if (window.ethereyeApi) {
+                apiClient = window.ethereyeApi;
+                console.log('✅ API Client connected successfully');
+            } else {
+                console.warn('⚠️ API Client not found, using demo mode');
+            }
+            initializeNetwork();
+            
+            // Test API connection
+            testApiConnection();
+        });
+        
+        // Test API connection
+        async function testApiConnection() {
+            if (apiClient) {
+                try {
+                    const health = await apiClient.healthCheck();
+                    console.log('✅ Backend API is healthy:', health);
+                    showNotification('✅ Connected to ETHEREYE API', 'success');
+                } catch (error) {
+                    console.error('❌ API connection failed:', error);
+                    showNotification('⚠️ API connection failed - using demo mode', 'warning');
+                }
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = message;
+            notification.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 10000; 
+                padding: 12px 20px; border-radius: 8px; color: white;
+                font-weight: 600; max-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                ${type === 'success' ? 'background: linear-gradient(135deg, #28a745, #20c997);' : ''}
+                ${type === 'warning' ? 'background: linear-gradient(135deg, #ffc107, #fd7e14);' : ''}
+                ${type === 'error' ? 'background: linear-gradient(135deg, #dc3545, #e83e8c);' : ''}
+                ${type === 'info' ? 'background: linear-gradient(135deg, #17a2b8, #6610f2);' : ''}
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 4000);
+        }
+
+        // Initialize vis.js network
+        function initializeNetwork() {
+            const container = document.getElementById('spider-network');
+            
+            const options = {
+                nodes: {
+                    shape: 'dot',
+                    size: 25,
+                    font: { 
+                        size: 14, 
+                        color: '#ffffff',
+                        face: 'Arial',
+                        strokeWidth: 2,
+                        strokeColor: '#000000'
+                    },
+                    borderWidth: 3,
+                    borderWidthSelected: 4,
+                    shadow: { enabled: true, color: 'rgba(107, 72, 255, 0.5)', size: 15 }
+                },
+                edges: {
+                    width: 2,
+                    color: { 
+                        color: '#6b48ff', 
+                        highlight: '#ff6b48',
+                        hover: '#ff6b48'
+                    },
+                    arrows: { 
+                        to: { enabled: true, scaleFactor: 1.5 } 
+                    },
+                    smooth: { 
+                        enabled: true, 
+                        type: 'continuous',
+                        roundness: 0.3 
+                    },
+                    shadow: { enabled: true }
+                },
+                physics: {
+                    enabled: true,
+                    stabilization: { iterations: 200 },
+                    barnesHut: {
+                        gravitationalConstant: -4000,
+                        centralGravity: 0.3,
+                        springLength: 150,
+                        springConstant: 0.04,
+                        damping: 0.09
+                    }
+                },
+                interaction: {
+                    dragNodes: true,
+                    dragView: true,
+                    zoomView: true,
+                    hover: true,
+                    selectConnectedEdges: false,
+                    tooltipDelay: 300
+                },
+                layout: {
+                    improvedLayout: true,
+                    randomSeed: 42
+                }
+            };
+
+            network = new vis.Network(container, networkData, options);
+            
+            // Event listeners
+            network.on('click', onNodeClick);
+            network.on('hoverNode', onNodeHover);
+            network.on('stabilizationIterationsDone', () => {
+                network.setOptions({ physics: { enabled: false } });
+                physicsEnabled = false;
+            });
+        }
+
+        // Network event handlers
+        function onNodeClick(params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const node = networkData.nodes.get(nodeId);
+                if (node) {
+                    highlightNodePath(nodeId);
+                    showNodeDetails(node);
+                }
+            }
+        }
+
+        function onNodeHover(params) {
+            const nodeId = params.node;
+            const node = networkData.nodes.get(nodeId);
+            if (node) {
+                // Create tooltip content
+                const tooltip = `
+                    <strong>${node.label}</strong><br>
+                    Type: ${node.type || 'Unknown'}<br>
+                    Risk: ${node.risk || 'Unknown'}<br>
+                    Balance: ${node.balance || 'N/A'}
+                `;
+                network.canvas.body.container.title = tooltip;
+            }
+        }
+
+        function highlightNodePath(nodeId) {
+            // Get connected edges
+            const connectedEdges = network.getConnectedEdges(nodeId);
+            const connectedNodes = network.getConnectedNodes(nodeId);
+            
+            // Reset all edges
+            const edges = networkData.edges.get();
+            edges.forEach(edge => {
+                if (connectedEdges.includes(edge.id)) {
+                    networkData.edges.update({ ...edge, width: 4, color: { color: '#ff6b48' } });
+                } else {
+                    networkData.edges.update({ ...edge, width: 2, color: { color: '#6b48ff' } });
+                }
+            });
+            
+            // Highlight connected nodes
+            const nodes = networkData.nodes.get();
+            nodes.forEach(node => {
+                if (connectedNodes.includes(node.id) || node.id === nodeId) {
+                    networkData.nodes.update({ ...node, borderWidth: 4, borderColor: '#ff6b48' });
+                } else {
+                    networkData.nodes.update({ ...node, borderWidth: 3, borderColor: node.color.border });
+                }
+            });
+        }
+
+        function showNodeDetails(node) {
+            // Update analysis panel
+            document.getElementById('targetAddress').textContent = node.id || 'Unknown';
+            
+            // Simulate risk analysis
+            const riskTypes = ['low', 'medium', 'high', 'critical'];
+            const riskLabels = ['🟢 Low', '🟡 Medium', '🟠 High', '🔴 Critical'];
+            const riskIndex = Math.floor(Math.random() * 4);
+            
+            const riskElement = document.getElementById('riskLevel');
+            riskElement.className = `risk-indicator risk-${riskTypes[riskIndex]}`;
+            riskElement.innerHTML = `<span>${riskLabels[riskIndex].split(' ')[0]}</span> ${riskLabels[riskIndex].split(' ')[1]}`;
+            
+            document.getElementById('riskScore').textContent = `${Math.floor(Math.random() * 100)}%`;
+        }
+
+        // Main analysis function
+        async function analyzeNetwork() {
+            const searchInput = document.getElementById('searchInput').value.trim();
+            
+            if (!searchInput) {
+                showNotification('⚠️ Please enter an Ethereum address or transaction hash', 'warning');
+                return;
+            }
+            
+            if (!isValidInput(searchInput)) {
+                showNotification('❌ Invalid format. Please enter a valid Ethereum address or transaction hash', 'error');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            showNotification('🔍 Analyzing network relationships...', 'info');
+            
+            try {
+                let networkResult;
+                
+                if (apiClient) {
+                    console.log('🌐 Fetching real data from API...');
+                    try {
+                        networkResult = await apiClient.getSpiderNetwork(searchInput, { depth: 2, limit: 20 });
+                        showNotification('✅ Network analysis completed successfully', 'success');
+                    } catch (apiError) {
+                        console.warn('API call failed, falling back to demo:', apiError);
+                        networkResult = generateDemoNetwork(searchInput);
+                        showNotification('⚠️ Using demo data - API unavailable', 'warning');
+                    }
+                } else {
+                    console.log('🎮 Generating demo data...');
+                    networkResult = generateDemoNetwork(searchInput);
+                    showNotification('🎮 Demo network generated', 'info');
+                }
+                
+                if (!networkResult || !networkResult.network) {
+                    throw new Error('Invalid network data received');
+                }
+                
+                visualizeNetwork(networkResult, searchInput);
+                updateAnalysisInfo(networkResult, searchInput);
+                
+            } catch (error) {
+                console.error('❌ Network analysis failed:', error);
+                showNotification('❌ Analysis failed: ' + error.message, 'error');
+                
+                // Final fallback to demo data
+                try {
+                    const demoResult = generateDemoNetwork(searchInput);
+                    visualizeNetwork(demoResult, searchInput);
+                    updateAnalysisInfo(demoResult, searchInput);
+                    showNotification('🎮 Showing demo network instead', 'info');
+                } catch (demoError) {
+                    console.error('❌ Even demo generation failed:', demoError);
+                    showNotification('❌ Complete system failure - please refresh page', 'error');
+                }
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Generate demo network data
+        function generateDemoNetwork(centerAddress) {
+            const nodes = [];
+            const edges = [];
+            
+            // Center node
+            nodes.push({
+                id: centerAddress,
+                label: centerAddress.slice(0, 8) + '...',
+                color: { background: '#6b48ff', border: '#5a3de6' },
+                size: 35,
+                type: 'origin',
+                risk: 'medium',
+                balance: '125.45 ETH'
+            });
+            
+            // Generate connected nodes
+            const nodeTypes = [
+                { type: 'regular', color: '#28a745', risk: 'low' },
+                { type: 'exchange', color: '#ffc107', risk: 'low' },
+                { type: 'suspicious', color: '#dc3545', risk: 'high' },
+                { type: 'contract', color: '#17a2b8', risk: 'medium' }
+            ];
+            
+            const nodeCount = 15 + Math.floor(Math.random() * 10);
+            
+            for (let i = 0; i < nodeCount; i++) {
+                const typeInfo = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+                const nodeAddress = `0x${Math.random().toString(16).substr(2, 8)}...${Math.random().toString(16).substr(2, 4)}`;
+                
+                nodes.push({
+                    id: nodeAddress,
+                    label: nodeAddress.slice(0, 8) + '...',
+                    color: { background: typeInfo.color, border: typeInfo.color },
+                    size: 20 + Math.random() * 15,
+                    type: typeInfo.type,
+                    risk: typeInfo.risk,
+                    balance: `${(Math.random() * 100).toFixed(2)} ETH`
+                });
+                
+                // Create edge to center
+                edges.push({
+                    id: `edge_${i}`,
+                    from: centerAddress,
+                    to: nodeAddress,
+                    label: `${(Math.random() * 10).toFixed(1)} ETH`,
+                    width: 2 + Math.random() * 3
+                });
+            }
+            
+            // Add some inter-node connections
+            for (let i = 0; i < Math.floor(nodeCount / 3); i++) {
+                const from = nodes[1 + Math.floor(Math.random() * (nodes.length - 1))];
+                const to = nodes[1 + Math.floor(Math.random() * (nodes.length - 1))];
+                
+                if (from.id !== to.id) {
+                    edges.push({
+                        id: `inter_edge_${i}`,
+                        from: from.id,
+                        to: to.id,
+                        label: `${(Math.random() * 5).toFixed(1)} ETH`,
+                        width: 1 + Math.random() * 2
+                    });
+                }
+            }
+            
+            return {
+                center_address: centerAddress,
+                network: { nodes, links: edges },
+                metadata: {
+                    total_nodes: nodes.length,
+                    total_edges: edges.length,
+                    risk_level: 'medium',
+                    analysis_timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // Visualize network data
+        function visualizeNetwork(networkResult, centerAddress) {
+            // Clear existing data
+            networkData.nodes.clear();
+            networkData.edges.clear();
+            
+            // Add nodes
+            const nodes = networkResult.network.nodes.map(node => ({
+                ...node,
+                font: { color: '#ffffff', size: 12 },
+                shadow: true
+            }));
+            networkData.nodes.add(nodes);
+            
+            // Add edges
+            const edges = networkResult.network.links.map(link => ({
+                ...link,
+                arrows: { to: { enabled: true, scaleFactor: 1.2 } }
+            }));
+            networkData.edges.add(edges);
+            
+            // Enable physics and fit network
+            network.setOptions({ physics: { enabled: true } });
+            physicsEnabled = true;
+            
+            setTimeout(() => {
+                fitNetwork();
+            }, 1000);
+        }
+
+        // Update analysis information
+        function updateAnalysisInfo(networkResult, centerAddress) {
+            document.getElementById('targetAddress').textContent = centerAddress.slice(0, 20) + '...';
+            document.getElementById('analysisTime').textContent = new Date().toLocaleTimeString();
+            document.getElementById('totalNodes').textContent = networkResult.metadata.total_nodes || networkResult.network.nodes.length;
+            document.getElementById('totalEdges').textContent = networkResult.metadata.total_edges || networkResult.network.links.length;
+            document.getElementById('connectionCount').textContent = (networkResult.network.nodes.length - 1).toString();
+            
+            // Calculate risk metrics
+            const highRiskNodes = networkResult.network.nodes.filter(n => n.risk === 'high' || n.type === 'suspicious').length;
+            const exchangeNodes = networkResult.network.nodes.filter(n => n.type === 'exchange').length;
+            
+            document.getElementById('suspiciousActivity').textContent = highRiskNodes > 0 ? `${highRiskNodes} high-risk connections` : 'None detected';
+            document.getElementById('exchangeCount').textContent = exchangeNodes.toString();
+            document.getElementById('clusterSize').textContent = Math.ceil(networkResult.network.nodes.length / 3).toString();
+        }
+
+        // Control functions
+        function fitNetwork() {
+            if (network) {
+                network.fit({ animation: { duration: 1000, easingFunction: 'easeInOutQuad' } });
+            }
+        }
+
+        function togglePhysics() {
+            if (network) {
+                physicsEnabled = !physicsEnabled;
+                network.setOptions({ physics: { enabled: physicsEnabled } });
+                
+                const button = document.querySelector('[onclick="togglePhysics()"]');
+                button.innerHTML = physicsEnabled ? '⏸️ Physics' : '▶️ Physics';
+            }
+        }
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Close export menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.querySelector('.export-dropdown');
+            const menu = document.getElementById('exportMenu');
+            if (dropdown && !dropdown.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        function exportNetwork(format = 'png') {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = 'none';
+            
+            if (!networkData.nodes.length) {
+                showNotification('⚠️ No network data to export', 'warning');
+                return;
+            }
+            
+            const timestamp = Date.now();
+            const baseFilename = `ethereye-spider-map-${timestamp}`;
+            
+            switch (format) {
+                case 'png':
+                    exportAsPNG(baseFilename);
+                    break;
+                case 'csv':
+                    exportAsCSV(baseFilename);
+                    break;
+                case 'json':
+                    exportAsJSON(baseFilename);
+                    break;
+                default:
+                    exportAsPNG(baseFilename);
+            }
+        }
+        
+        function exportAsPNG(filename) {
+            if (network) {
+                const canvas = network.canvas.frame.canvas;
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showNotification('✅ Network exported as PNG', 'success');
+            }
+        }
+        
+        function exportAsCSV(filename) {
+            const nodes = networkData.nodes.get();
+            const edges = networkData.edges.get();
+            
+            // Create nodes CSV
+            const nodeHeaders = ['ID', 'Label', 'Type', 'Risk', 'Balance', 'Size', 'Color'];
+            const nodeRows = nodes.map(node => [
+                `"${node.id || ''}",`,
+                `"${node.label || ''}",`,
+                `"${node.type || ''}",`,
+                `"${node.risk || ''}",`,
+                `"${node.balance || ''}",`,
+                `"${node.size || ''}",`,
+                `"${node.color?.background || ''}"`
+            ]);
+            
+            const nodesCsv = [nodeHeaders.join(','), ...nodeRows.map(row => row.join(''))].join('\n');
+            
+            // Create edges CSV
+            const edgeHeaders = ['ID', 'From', 'To', 'Label', 'Width'];
+            const edgeRows = edges.map(edge => [
+                `"${edge.id || ''}",`,
+                `"${edge.from || ''}",`,
+                `"${edge.to || ''}",`,
+                `"${edge.label || ''}",`,
+                `"${edge.width || ''}"`
+            ]);
+            
+            const edgesCsv = [edgeHeaders.join(','), ...edgeRows.map(row => row.join(''))].join('\n');
+            
+            // Create combined CSV with metadata
+            const targetAddress = document.getElementById('targetAddress').textContent;
+            const analysisTime = document.getElementById('analysisTime').textContent;
+            const totalNodes = document.getElementById('totalNodes').textContent;
+            const totalEdges = document.getElementById('totalEdges').textContent;
+            const riskScore = document.getElementById('riskScore').textContent;
+            
+            const metadataSection = [
+                '# ETHEREYE Spider Map Export',
+                `# Generated: ${new Date().toISOString()}`,
+                `# Target Address: ${targetAddress}`,
+                `# Analysis Time: ${analysisTime}`,
+                `# Total Nodes: ${totalNodes}`,
+                `# Total Edges: ${totalEdges}`,
+                `# Risk Score: ${riskScore}`,
+                '',
+                '# NODES DATA',
+                nodesCsv,
+                '',
+                '# EDGES DATA',
+                edgesCsv
+            ].join('\n');
+            
+            downloadFile(`${filename}.csv`, metadataSection, 'text/csv');
+            showNotification('✅ Network data exported as CSV', 'success');
+        }
+        
+        function exportAsJSON(filename) {
+            const nodes = networkData.nodes.get();
+            const edges = networkData.edges.get();
+            
+            const exportData = {
+                metadata: {
+                    generated: new Date().toISOString(),
+                    target_address: document.getElementById('targetAddress').textContent,
+                    analysis_time: document.getElementById('analysisTime').textContent,
+                    total_nodes: parseInt(document.getElementById('totalNodes').textContent),
+                    total_edges: parseInt(document.getElementById('totalEdges').textContent),
+                    risk_score: document.getElementById('riskScore').textContent,
+                    platform: 'ETHEREYE Spider Map'
+                },
+                network: {
+                    nodes: nodes.map(node => ({
+                        id: node.id,
+                        label: node.label,
+                        type: node.type,
+                        risk: node.risk,
+                        balance: node.balance,
+                        size: node.size,
+                        color: node.color,
+                        position: network ? network.getPosition(node.id) : null
+                    })),
+                    edges: edges.map(edge => ({
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to,
+                        label: edge.label,
+                        width: edge.width
+                    }))
+                }
+            };
+            
+            downloadFile(`${filename}.json`, JSON.stringify(exportData, null, 2), 'application/json');
+            showNotification('✅ Network data exported as JSON', 'success');
+        }
+        
+        function downloadFile(filename, content, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetView() {
+            networkData.nodes.clear();
+            networkData.edges.clear();
+            document.getElementById('searchInput').value = '';
+            document.getElementById('targetAddress').textContent = 'None selected';
+            document.getElementById('analysisTime').textContent = 'Never';
+            document.getElementById('totalNodes').textContent = '0';
+            document.getElementById('totalEdges').textContent = '0';
+            document.getElementById('connectionCount').textContent = '0';
+            document.getElementById('riskScore').textContent = '0%';
+        }
+
+        function generateDemo() {
+            const demoAddress = '0x742d35cc6634c0532925a3b8d4ba26c0c8b0e76e';
+            document.getElementById('searchInput').value = demoAddress;
+            analyzeNetwork();
+        }
+
+        function isValidInput(input) {
+            const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+            const txHashRegex = /^0x[a-fA-F0-9]{64}$/;
+            return addressRegex.test(input) || txHashRegex.test(input);
+        }
+
+        // Search on Enter key
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeNetwork();
+            }
+        });
+    </script>
+</body>
+</html>

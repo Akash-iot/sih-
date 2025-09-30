@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHEREYE - Spider Map Network Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(42, 42, 60, 0.9);
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6b48ff;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 250px;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: #6b48ff;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #5a3de6;
+            transform: translateY(-2px);
+        }
+
+        #spider-map {
+            width: 100%;
+            height: calc(100vh - 60px);
+            background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            stroke: #fff;
+            stroke-width: 3px;
+        }
+
+        .link {
+            stroke: #6b48ff;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .link.active {
+            stroke: #ff6b48;
+            stroke-width: 3px;
+            stroke-opacity: 1;
+        }
+
+        .node-label {
+            font-size: 10px;
+            fill: #fff;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: Arial, sans-serif;
+        }
+
+        .info-panel {
+            background: rgba(42, 42, 60, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(107, 72, 255, 0.3);
+        }
+
+        .info-panel h3 {
+            color: #6b48ff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-item strong {
+            color: #6b48ff;
+        }
+
+        .legend {
+            background: rgba(42, 42, 60, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .legend h3 {
+            color: #6b48ff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .stats {
+            background: rgba(42, 42, 60, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .stats h3 {
+            color: #6b48ff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #6b48ff;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(42, 42, 60, 0.9);
+            border: 1px solid #6b48ff;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn:hover {
+            background: #6b48ff;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #6b48ff;
+        }
+
+        .spinner {
+            border: 4px solid rgba(107, 72, 255, 0.3);
+            border-left: 4px solid #6b48ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="legend">
+                <h3>🕸️ Spider Map Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #6b48ff;"></div>
+                    <span>Main Address</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #28a745;"></div>
+                    <span>Incoming Transactions</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #dc3545;"></div>
+                    <span>Outgoing Transactions</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffc107;"></div>
+                    <span>Contract Interactions</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b48;"></div>
+                    <span>High-Risk Addresses</span>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h3>📊 Selected Node Info</h3>
+                <div id="node-info">
+                    <div class="info-item">Click on a node to see details</div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <h3>📈 Network Statistics</h3>
+                <div class="stat-item">
+                    <span>Total Nodes:</span>
+                    <span id="total-nodes">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total Connections:</span>
+                    <span id="total-links">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Center Address:</span>
+                    <span id="center-address">None</span>
+                </div>
+                <div class="stat-item">
+                    <span>Risk Level:</span>
+                    <span id="risk-level">Analyzing...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+            
+            <div class="header">
+                <div class="logo">ETHEREYE Spider Map</div>
+                <div class="controls">
+                    <input type="text" id="address-input" class="search-input" 
+                           placeholder="Enter wallet address (0x...) or transaction hash">
+                    <button class="btn" onclick="generateSpiderMap()">🕸️ Generate Map</button>
+                    <button class="btn" onclick="resetView()">🔄 Reset</button>
+                    <button class="btn" onclick="exportMap()">💾 Export</button>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <div>Analyzing blockchain connections...</div>
+            </div>
+
+            <svg id="spider-map"></svg>
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        class SpiderMap {
+            constructor() {
+                this.svg = d3.select('#spider-map');
+                this.width = window.innerWidth - 300;
+                this.height = window.innerHeight - 60;
+                this.nodes = [];
+                this.links = [];
+                this.simulation = null;
+                this.tooltip = d3.select('#tooltip');
+                
+                this.svg.attr('width', this.width).attr('height', this.height);
+                
+                // Create zoom behavior
+                this.zoom = d3.zoom()
+                    .scaleExtent([0.1, 10])
+                    .on('zoom', (event) => {
+                        this.container.attr('transform', event.transform);
+                    });
+                
+                this.svg.call(this.zoom);
+                
+                // Create container for zoomable content
+                this.container = this.svg.append('g');
+                
+                this.initializeSimulation();
+                this.setupEventListeners();
+                
+                // Load demo data on start
+                this.loadDemoData();
+            }
+
+            initializeSimulation() {
+                this.simulation = d3.forceSimulation(this.nodes)
+                    .force('link', d3.forceLink(this.links).id(d => d.id).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-300))
+                    .force('center', d3.forceCenter(this.width / 2, this.height / 2))
+                    .force('collision', d3.forceCollide().radius(30));
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.width = window.innerWidth - 300;
+                    this.height = window.innerHeight - 60;
+                    this.svg.attr('width', this.width).attr('height', this.height);
+                    this.simulation.force('center', d3.forceCenter(this.width / 2, this.height / 2));
+                    this.simulation.alpha(0.3).restart();
+                });
+            }
+
+            async generateMapFromAddress(address) {
+                document.getElementById('loading').style.display = 'block';
+                
+                try {
+                    // Simulate API call to get transaction data
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const mapData = await this.fetchTransactionNetwork(address);
+                    this.updateVisualization(mapData);
+                    
+                    document.getElementById('center-address').textContent = 
+                        address.substring(0, 10) + '...' + address.substring(address.length - 8);
+                    
+                } catch (error) {
+                    console.error('Error generating spider map:', error);
+                    alert('Failed to generate spider map. Please try again.');
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }
+
+            async fetchTransactionNetwork(address) {
+                try {
+                    // Try to fetch from ETHEREYE API first
+                    const response = await fetch(`http://127.0.0.1:8001/api/v1/spider-map/network/${address}?depth=2&limit=25&risk_analysis=true`);
+                    
+                    if (response.ok) {
+                        const apiData = await response.json();
+                        console.log('🕸️ Fetched network data from API:', apiData);
+                        return apiData.network;
+                    } else {
+                        console.warn('API request failed, using demo data');
+                    }
+                } catch (error) {
+                    console.warn('API connection failed, using demo data:', error);
+                }
+                
+                // Fallback to demo data
+                const centerNode = {
+                    id: address,
+                    type: 'center',
+                    balance: '1.25 ETH',
+                    transactions: 156,
+                    risk: 'low'
+                };
+
+                const nodes = [centerNode];
+                const links = [];
+
+                // Generate connected addresses
+                const connectionTypes = ['incoming', 'outgoing', 'contract', 'risky'];
+                const numConnections = Math.floor(Math.random() * 20) + 10;
+
+                for (let i = 0; i < numConnections; i++) {
+                    const nodeId = '0x' + Math.random().toString(16).substr(2, 40);
+                    const type = connectionTypes[Math.floor(Math.random() * connectionTypes.length)];
+                    
+                    nodes.push({
+                        id: nodeId,
+                        type: type,
+                        balance: (Math.random() * 10).toFixed(2) + ' ETH',
+                        transactions: Math.floor(Math.random() * 500) + 1,
+                        risk: Math.random() > 0.8 ? 'high' : Math.random() > 0.6 ? 'medium' : 'low',
+                        value: Math.random() * 5 + 0.1
+                    });
+
+                    links.push({
+                        source: address,
+                        target: nodeId,
+                        value: Math.random() * 10 + 0.1,
+                        type: type,
+                        timestamp: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString()
+                    });
+                }
+
+                // Create some inter-connections
+                for (let i = 1; i < Math.min(nodes.length, 15); i++) {
+                    if (Math.random() > 0.7) {
+                        const targetIndex = Math.floor(Math.random() * (nodes.length - 1)) + 1;
+                        if (targetIndex !== i) {
+                            links.push({
+                                source: nodes[i].id,
+                                target: nodes[targetIndex].id,
+                                value: Math.random() * 2,
+                                type: 'secondary',
+                                timestamp: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString()
+                            });
+                        }
+                    }
+                }
+
+                return { nodes, links };
+            }
+
+            updateVisualization(data) {
+                this.nodes = data.nodes;
+                this.links = data.links;
+
+                // Update statistics
+                document.getElementById('total-nodes').textContent = this.nodes.length;
+                document.getElementById('total-links').textContent = this.links.length;
+                
+                const riskLevel = this.calculateRiskLevel();
+                document.getElementById('risk-level').textContent = riskLevel;
+
+                // Clear previous visualization
+                this.container.selectAll('*').remove();
+
+                // Update simulation
+                this.simulation.nodes(this.nodes);
+                this.simulation.force('link').links(this.links);
+
+                // Create links
+                const link = this.container.append('g')
+                    .selectAll('line')
+                    .data(this.links)
+                    .enter()
+                    .append('line')
+                    .attr('class', 'link')
+                    .attr('stroke-width', d => Math.sqrt(d.value) * 2)
+                    .style('stroke', d => this.getLinkColor(d.type));
+
+                // Create nodes
+                const node = this.container.append('g')
+                    .selectAll('circle')
+                    .data(this.nodes)
+                    .enter()
+                    .append('circle')
+                    .attr('class', 'node')
+                    .attr('r', d => this.getNodeRadius(d))
+                    .style('fill', d => this.getNodeColor(d.type))
+                    .style('stroke', d => d.risk === 'high' ? '#ff0000' : '#333')
+                    .style('stroke-width', d => d.risk === 'high' ? 3 : 1)
+                    .call(this.drag());
+
+                // Add labels
+                const labels = this.container.append('g')
+                    .selectAll('text')
+                    .data(this.nodes)
+                    .enter()
+                    .append('text')
+                    .attr('class', 'node-label')
+                    .text(d => d.id.substring(0, 6) + '...')
+                    .style('font-size', d => d.type === 'center' ? '12px' : '10px');
+
+                // Add event handlers
+                node
+                    .on('mouseover', (event, d) => this.showTooltip(event, d))
+                    .on('mouseout', () => this.hideTooltip())
+                    .on('click', (event, d) => this.selectNode(d));
+
+                // Update positions on tick
+                this.simulation.on('tick', () => {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+
+                    node
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+
+                    labels
+                        .attr('x', d => d.x)
+                        .attr('y', d => d.y + 25);
+                });
+
+                this.simulation.alpha(1).restart();
+            }
+
+            getNodeColor(type) {
+                const colors = {
+                    'center': '#6b48ff',
+                    'incoming': '#28a745',
+                    'outgoing': '#dc3545',
+                    'contract': '#ffc107',
+                    'risky': '#ff6b48'
+                };
+                return colors[type] || '#6c757d';
+            }
+
+            getLinkColor(type) {
+                const colors = {
+                    'incoming': '#28a745',
+                    'outgoing': '#dc3545',
+                    'contract': '#ffc107',
+                    'risky': '#ff6b48',
+                    'secondary': '#6b48ff'
+                };
+                return colors[type] || '#6b48ff';
+            }
+
+            getNodeRadius(node) {
+                if (node.type === 'center') return 20;
+                return Math.max(8, Math.min(15, node.value * 3));
+            }
+
+            calculateRiskLevel() {
+                const riskyNodes = this.nodes.filter(n => n.risk === 'high').length;
+                const totalNodes = this.nodes.length;
+                const riskRatio = riskyNodes / totalNodes;
+
+                if (riskRatio > 0.3) return '🔴 High Risk';
+                if (riskRatio > 0.1) return '🟡 Medium Risk';
+                return '🟢 Low Risk';
+            }
+
+            showTooltip(event, d) {
+                this.tooltip
+                    .style('opacity', 1)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 10) + 'px')
+                    .html(`
+                        <strong>${d.id.substring(0, 10)}...</strong><br>
+                        Type: ${d.type}<br>
+                        Balance: ${d.balance}<br>
+                        Transactions: ${d.transactions}<br>
+                        Risk Level: ${d.risk}
+                    `);
+            }
+
+            hideTooltip() {
+                this.tooltip.style('opacity', 0);
+            }
+
+            selectNode(node) {
+                const infoDiv = document.getElementById('node-info');
+                infoDiv.innerHTML = `
+                    <div class="info-item"><strong>Address:</strong> ${node.id}</div>
+                    <div class="info-item"><strong>Type:</strong> ${node.type}</div>
+                    <div class="info-item"><strong>Balance:</strong> ${node.balance}</div>
+                    <div class="info-item"><strong>Transactions:</strong> ${node.transactions}</div>
+                    <div class="info-item"><strong>Risk Level:</strong> ${node.risk}</div>
+                `;
+
+                // Highlight connected nodes
+                this.container.selectAll('.link')
+                    .classed('active', d => d.source.id === node.id || d.target.id === node.id);
+            }
+
+            drag() {
+                return d3.drag()
+                    .on('start', (event, d) => {
+                        if (!event.active) this.simulation.alphaTarget(0.3).restart();
+                        d.fx = d.x;
+                        d.fy = d.y;
+                    })
+                    .on('drag', (event, d) => {
+                        d.fx = event.x;
+                        d.fy = event.y;
+                    })
+                    .on('end', (event, d) => {
+                        if (!event.active) this.simulation.alphaTarget(0);
+                        d.fx = null;
+                        d.fy = null;
+                    });
+            }
+
+            loadDemoData() {
+                const demoAddress = '0x742d35Cc6634C0532925a3b8D8888d1B6a6B8c7D';
+                this.generateMapFromAddress(demoAddress);
+            }
+
+            reset() {
+                this.container.selectAll('*').remove();
+                this.nodes = [];
+                this.links = [];
+                document.getElementById('node-info').innerHTML = '<div class="info-item">Click on a node to see details</div>';
+                document.getElementById('total-nodes').textContent = '0';
+                document.getElementById('total-links').textContent = '0';
+                document.getElementById('center-address').textContent = 'None';
+                document.getElementById('risk-level').textContent = 'Analyzing...';
+            }
+
+            exportMap() {
+                const data = {
+                    nodes: this.nodes,
+                    links: this.links,
+                    timestamp: new Date().toISOString(),
+                    center_address: document.getElementById('center-address').textContent
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `spider-map-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert('🕸️ Spider map data exported successfully!');
+            }
+        }
+
+        // Global functions
+        let spiderMap;
+
+        function generateSpiderMap() {
+            const address = document.getElementById('address-input').value.trim();
+            if (!address) {
+                alert('Please enter a valid wallet address or transaction hash');
+                return;
+            }
+
+            if (!address.startsWith('0x') || address.length !== 42) {
+                alert('Please enter a valid Ethereum address (0x...)');
+                return;
+            }
+
+            spiderMap.generateMapFromAddress(address);
+        }
+
+        function resetView() {
+            spiderMap.reset();
+            document.getElementById('address-input').value = '';
+        }
+
+        function exportMap() {
+            if (spiderMap.nodes.length === 0) {
+                alert('Please generate a spider map first');
+                return;
+            }
+            spiderMap.exportMap();
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            spiderMap = new SpiderMap();
+            
+            // Allow Enter key to generate map
+            document.getElementById('address-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    generateSpiderMap();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

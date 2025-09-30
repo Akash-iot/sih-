@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHEREYE API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #8932f6;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .loading {
+            color: #ff9800;
+        }
+        pre {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #8932f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #7329d4;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 ETHEREYE API Integration Test</h1>
+    <p>Testing all API connections and functionality...</p>
+
+    <div class="test-section">
+        <h2>✅ Health Check</h2>
+        <button onclick="testHealthCheck()">Test Health Check</button>
+        <div id="health-result">Ready to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>⛽ Live Gas Prices</h2>
+        <button onclick="testGasPrices()">Get Live Gas Prices</button>
+        <div id="gas-result">Ready to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>💰 Cryptocurrency Prices</h2>
+        <button onclick="testCryptoPrices()">Get Crypto Prices</button>
+        <div id="crypto-result">Ready to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>🕸️ Spider Network Analysis</h2>
+        <button onclick="testSpiderMap()">Test Spider Map</button>
+        <div id="spider-result">Ready to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Analytics Overview</h2>
+        <button onclick="testAnalytics()">Get Analytics</button>
+        <div id="analytics-result">Ready to test...</div>
+    </div>
+
+    <!-- Include the API client -->
+    <script src="js/api-client.js"></script>
+
+    <script>
+        function showLoading(elementId) {
+            document.getElementById(elementId).innerHTML = '<span class="loading">⏳ Loading...</span>';
+        }
+
+        function showSuccess(elementId, data) {
+            document.getElementById(elementId).innerHTML = 
+                `<span class="success">✅ Success!</span><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        function showError(elementId, error) {
+            document.getElementById(elementId).innerHTML = 
+                `<span class="error">❌ Error: ${error.message}</span>`;
+        }
+
+        async function testHealthCheck() {
+            showLoading('health-result');
+            try {
+                const result = await ethereyeApi.healthCheck();
+                showSuccess('health-result', result);
+            } catch (error) {
+                showError('health-result', error);
+            }
+        }
+
+        async function testGasPrices() {
+            showLoading('gas-result');
+            try {
+                const result = await ethereyeApi.getLiveGas();
+                showSuccess('gas-result', result);
+            } catch (error) {
+                showError('gas-result', error);
+            }
+        }
+
+        async function testCryptoPrices() {
+            showLoading('crypto-result');
+            try {
+                const result = await ethereyeApi.getLiveCryptoPrices();
+                showSuccess('crypto-result', result);
+            } catch (error) {
+                showError('crypto-result', error);
+            }
+        }
+
+        async function testSpiderMap() {
+            showLoading('spider-result');
+            try {
+                const result = await ethereyeApi.getSpiderNetwork('0x742d35cc6634c0532925a3b8d4ba26c0c8b0e76e');
+                showSuccess('spider-result', result);
+            } catch (error) {
+                showError('spider-result', error);
+            }
+        }
+
+        async function testAnalytics() {
+            showLoading('analytics-result');
+            try {
+                const result = await ethereyeApi.getAnalyticsOverview();
+                showSuccess('analytics-result', result);
+            } catch (error) {
+                showError('analytics-result', error);
+            }
+        }
+
+        // Auto-run basic tests
+        window.onload = async function() {
+            console.log('🚀 ETHEREYE API Test Page Loaded');
+            console.log('Backend URL:', ethereyeApi.baseUrl);
+            
+            // Run health check automatically
+            await testHealthCheck();
+        }
+    </script>
+</body>
+</html>

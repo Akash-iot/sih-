@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHER-EYE | Advanced Blockchain Explorer</title>
+    <script src="js/api-client.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); 
+            color: #fff; min-height: 100vh; display: flex; 
+        }
+        
+        .sidebar { 
+            width: 280px; background: rgba(42, 42, 60, 0.95); backdrop-filter: blur(20px);
+            padding: 25px; height: 100vh; position: fixed; overflow-y: auto; 
+            box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+        }
+        .sidebar .logo { 
+            font-size: 24px; font-weight: bold; color: #6b48ff; margin-bottom: 30px; cursor: pointer; 
+        }
+        .sidebar .logo::before { content: "🌐"; margin-right: 12px; }
+        
+        .sidebar h3 { 
+            font-size: 14px; text-transform: uppercase; margin-bottom: 15px; 
+            color: #888; font-weight: 600; 
+        }
+        .sidebar ul { list-style: none; margin-bottom: 30px; }
+        .sidebar ul li { margin-bottom: 8px; }
+        .sidebar ul li a { 
+            display: flex; align-items: center; color: #b0b0c0; text-decoration: none; 
+            padding: 12px 15px; border-radius: 8px; transition: all 0.3s ease; 
+        }
+        .sidebar ul li a:hover, .sidebar ul li a.active { 
+            background: rgba(107, 72, 255, 0.2); color: #fff; transform: translateX(5px); 
+        }
+        .sidebar ul li a::before { margin-right: 12px; font-size: 16px; }
+        .sidebar ul li a.dashboard::before { content: "📊"; }
+        .sidebar ul li a.wallets::before { content: "👛"; }
+        .sidebar ul li a.traces::before { content: "🔍"; }
+        .sidebar ul li a.analytics::before { content: "📈"; }
+        .sidebar ul li a.explorer::before { content: "🌐"; }
+        .sidebar ul li a.spider-map::before { content: "🕸️"; }
+        .sidebar ul li a.settings::before { content: "⚙️"; }
+        
+        .content { margin-left: 280px; flex: 1; padding: 25px; }
+        
+        .header { 
+            background: rgba(42, 42, 60, 0.95); backdrop-filter: blur(20px); 
+            padding: 30px; border-radius: 15px; margin-bottom: 25px; text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+        }
+        .header h1 { font-size: 32px; font-weight: 700; color: #6b48ff; margin-bottom: 15px; }
+        .header p { color: rgba(255, 255, 255, 0.8); margin-bottom: 30px; font-size: 16px; }
+        
+        .search-container { max-width: 800px; margin: 0 auto; position: relative; }
+        .search-input { 
+            width: 100%; padding: 18px 60px 18px 20px; border: 2px solid rgba(107, 72, 255, 0.3); 
+            border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #fff; 
+            font-size: 16px; outline: none; transition: all 0.3s ease; backdrop-filter: blur(10px);
+        }
+        .search-input:focus { border-color: #6b48ff; box-shadow: 0 0 0 4px rgba(107, 72, 255, 0.2); }
+        .search-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+        
+        .search-button { 
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: linear-gradient(135deg, #6b48ff 0%, #5a3de6 100%); color: white; 
+            border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; 
+            font-weight: 600; transition: all 0.3s ease;
+        }
+        .search-button:hover { transform: translateY(-50%) translateY(-2px); }
+        .search-button:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .search-suggestions { 
+            position: absolute; top: 100%; left: 0; right: 0; background: rgba(42, 42, 60, 0.95); 
+            border: 1px solid rgba(107, 72, 255, 0.3); border-radius: 12px; margin-top: 5px; 
+            max-height: 200px; overflow-y: auto; z-index: 1000; display: none; 
+        }
+        .suggestion-item { 
+            padding: 12px 20px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        .suggestion-item:hover { background: rgba(107, 72, 255, 0.2); }
+        .suggestion-item:last-child { border-bottom: none; }
+        
+        .search-types { 
+            display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; 
+        }
+        .search-type { 
+            padding: 8px 16px; background: rgba(255, 255, 255, 0.1); color: #fff; 
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; cursor: pointer; 
+            font-size: 14px; transition: all 0.3s ease; 
+        }
+        .search-type:hover { background: rgba(107, 72, 255, 0.3); }
+        
+        .recent-searches { 
+            margin-top: 20px; 
+        }
+        .recent-searches h4 { color: #6b48ff; margin-bottom: 15px; font-size: 16px; }
+        .recent-items { 
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; 
+        }
+        .recent-item { 
+            padding: 6px 14px; background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.8); 
+            border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 15px; cursor: pointer; 
+            font-size: 12px; transition: all 0.3s ease; font-family: 'Courier New', monospace; 
+        }
+        .recent-item:hover { background: rgba(107, 72, 255, 0.2); color: #fff; }
+        
+        .explorer-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
+            gap: 25px; margin-bottom: 25px; 
+        }
+        .explorer-card { 
+            background: rgba(42, 42, 60, 0.95); border-radius: 15px; padding: 25px; 
+            border: 1px solid rgba(107, 72, 255, 0.3); transition: all 0.3s ease; 
+            position: relative; overflow: hidden; 
+        }
+        .explorer-card:hover { 
+            transform: translateY(-5px); box-shadow: 0 10px 30px rgba(107, 72, 255, 0.3); 
+        }
+        .explorer-card::before { 
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; 
+            background: linear-gradient(90deg, #6b48ff, #ff6b48); 
+        }
+        .explorer-card h3 { 
+            font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 15px; 
+            display: flex; align-items: center; 
+        }
+        .explorer-card h3::before { font-size: 24px; margin-right: 12px; }
+        .explorer-card.blocks h3::before { content: "🧱"; }
+        .explorer-card.transactions h3::before { content: "💸"; }
+        .explorer-card.contracts h3::before { content: "📜"; }
+        .explorer-card.tokens h3::before { content: "🪙"; }
+        .explorer-card p { color: rgba(255, 255, 255, 0.8); margin-bottom: 20px; line-height: 1.5; }
+        .explorer-card .btn { 
+            width: 100%; padding: 12px; background: linear-gradient(135deg, #6b48ff 0%, #5a3de6 100%); 
+            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; 
+            transition: all 0.3s ease; 
+        }
+        .explorer-card .btn:hover { transform: translateY(-2px); }
+        
+        .results-section { 
+            background: rgba(42, 42, 60, 0.95); border-radius: 15px; padding: 25px; 
+            border: 1px solid rgba(107, 72, 255, 0.3); display: none; 
+        }
+        .results-title { font-size: 24px; font-weight: 600; color: #6b48ff; margin-bottom: 20px; }
+        .result-item { 
+            background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 20px; 
+            margin-bottom: 15px; border-left: 4px solid #6b48ff; 
+        }
+        .result-header { 
+            display: flex; justify-content: between; align-items: center; margin-bottom: 15px; 
+        }
+        .result-type { 
+            background: rgba(107, 72, 255, 0.3); color: #fff; padding: 4px 12px; 
+            border-radius: 15px; font-size: 12px; font-weight: 600; text-transform: uppercase; 
+        }
+        .result-details { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; margin-top: 15px; 
+        }
+        .detail-item { }
+        .detail-label { color: rgba(255, 255, 255, 0.7); font-size: 12px; margin-bottom: 5px; }
+        .detail-value { 
+            color: #fff; font-weight: 600; font-family: 'Courier New', monospace; 
+            word-break: break-all; 
+        }
+        
+        .loading { text-align: center; padding: 40px; }
+        .loading-spinner { 
+            width: 40px; height: 40px; border: 4px solid rgba(107, 72, 255, 0.3); 
+            border-top: 4px solid #6b48ff; border-radius: 50%; 
+            animation: spin 1s linear infinite; margin: 0 auto 15px; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .live-feed { 
+            background: rgba(42, 42, 60, 0.95); border-radius: 15px; padding: 25px; 
+            border: 1px solid rgba(107, 72, 255, 0.3); margin-bottom: 25px; 
+        }
+        .live-feed h3 { color: #6b48ff; margin-bottom: 20px; font-size: 20px; }
+        .feed-item { 
+            display: flex; align-items: center; padding: 15px; border-radius: 8px; 
+            background: rgba(255, 255, 255, 0.05); margin-bottom: 10px; 
+        }
+        .feed-icon { font-size: 20px; margin-right: 15px; }
+        .feed-content { flex: 1; }
+        .feed-title { font-size: 14px; font-weight: 600; color: #fff; }
+        .feed-details { font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-top: 5px; }
+        .feed-value { font-weight: bold; color: #6b48ff; }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; padding: 15px; }
+            .sidebar h3, .sidebar ul li a span { display: none; }
+            .sidebar ul li a { justify-content: center; }
+            .content { margin-left: 70px; padding: 15px; }
+            .header { padding: 20px; }
+            .header h1 { font-size: 24px; }
+            .search-input { font-size: 14px; padding: 15px 50px 15px 15px; }
+            .explorer-grid { grid-template-columns: 1fr; }
+            .search-types, .recent-items { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo" onclick="window.location.href='index.html'">ETHER-EYE</div>
+        <h3>Main Navigation</h3>
+        <ul>
+            <li><a href="dashboard.html" class="dashboard"><span>Dashboard</span></a></li>
+            <li><a href="wallets.html" class="wallets"><span>Wallets</span></a></li>
+            <li><a href="traces.html" class="traces"><span>Traces</span></a></li>
+            <li><a href="analytics.html" class="analytics"><span>Analytics</span></a></li>
+        </ul>
+        <h3>Advanced Tools</h3>
+        <ul>
+            <li><a href="explorer.html" class="explorer active"><span>Explorer</span></a></li>
+            <li><a href="spider-map.html" class="spider-map"><span>Spider Map</span></a></li>
+            <li><a href="settings.html" class="settings"><span>Settings</span></a></li>
+        </ul>
+    </div>
+    
+    <div class="content">
+        <div class="header">
+            <h1>🔍 Advanced Blockchain Explorer</h1>
+            <p>Explore transactions, addresses, blocks, and smart contracts with powerful search and analysis tools</p>
+            
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" 
+                       placeholder="Search by address, transaction hash, block number, or token symbol..." 
+                       autocomplete="off">
+                <button id="searchButton" class="search-button" onclick="performSearch()">Search</button>
+                
+                <div id="searchSuggestions" class="search-suggestions"></div>
+            </div>
+            
+            <div class="search-types">
+                <div class="search-type" onclick="setSearchType('address')">👛 Address</div>
+                <div class="search-type" onclick="setSearchType('transaction')">💸 Transaction</div>
+                <div class="search-type" onclick="setSearchType('block')">🧱 Block</div>
+                <div class="search-type" onclick="setSearchType('token')">🪙 Token</div>
+                <div class="search-type" onclick="setSearchType('contract')">📜 Contract</div>
+            </div>
+            
+            <div class="recent-searches" id="recentSearches">
+                <h4>Recent Searches</h4>
+                <div class="recent-items" id="recentItems">
+                    <!-- Recent search items will be populated here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="live-feed" id="liveFeed">
+            <h3>📡 Live Blockchain Activity</h3>
+            <div id="feedItems">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading live blockchain data...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explorer-grid">
+            <div class="explorer-card blocks">
+                <h3>Latest Blocks</h3>
+                <p>Explore the most recent blocks added to the Ethereum blockchain with detailed information about miners, gas usage, and transactions.</p>
+                <button class="btn" onclick="exploreBlocks()">View Latest Blocks</button>
+            </div>
+            
+            <div class="explorer-card transactions">
+                <h3>Recent Transactions</h3>
+                <p>Browse the latest transactions including transfers, contract interactions, and DeFi activities with comprehensive details.</p>
+                <button class="btn" onclick="exploreTransactions()">View Transactions</button>
+            </div>
+            
+            <div class="explorer-card contracts">
+                <h3>Smart Contracts</h3>
+                <p>Analyze smart contract interactions, events, and deployments across the Ethereum network with advanced filtering options.</p>
+                <button class="btn" onclick="exploreContracts()">Explore Contracts</button>
+            </div>
+            
+            <div class="explorer-card tokens">
+                <h3>Token Analytics</h3>
+                <p>Discover ERC-20, ERC-721, and other token standards with real-time data on transfers, holders, and market activity.</p>
+                <button class="btn" onclick="exploreTokens()">Analyze Tokens</button>
+            </div>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <h2 class="results-title" id="resultsTitle">Search Results</h2>
+            <div id="resultsContent">
+                <!-- Search results will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let apiClient = null;
+        let recentSearches = JSON.parse(localStorage.getItem('ethereyeRecentSearches')) || [
+            '0x742d35cc6634c0532925a3b8d4ba26c0c8b0e76e',
+            '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+            '18500000'
+        ];
+        let currentSearchType = 'auto';
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            if (window.ethereyeApi) {
+                apiClient = window.ethereyeApi;
+                console.log('✅ API Client connected');
+            }
+            
+            updateRecentSearches();
+            loadLiveFeed();
+            setupSearchInput();
+        });
+        
+        // Setup search input with autocomplete
+        function setupSearchInput() {
+            const searchInput = document.getElementById('searchInput');
+            const suggestions = document.getElementById('searchSuggestions');
+            
+            searchInput.addEventListener('input', (e) => {
+                const value = e.target.value.trim();
+                if (value.length >= 3) {
+                    showSuggestions(value);
+                } else {
+                    suggestions.style.display = 'none';
+                }
+            });
+            
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    suggestions.style.display = 'none';
+                }
+            });
+        }
+        
+        // Show search suggestions
+        function showSuggestions(query) {
+            const suggestions = document.getElementById('searchSuggestions');
+            
+            // Suggest based on input pattern
+            const suggestionItems = [];
+            
+            if (/^0x[a-f0-9]{0,40}$/i.test(query)) {
+                suggestionItems.push(`${query} - Ethereum Address`);
+            }
+            if (/^0x[a-f0-9]{0,64}$/i.test(query)) {
+                suggestionItems.push(`${query} - Transaction Hash`);
+            }
+            if (/^\d+$/.test(query)) {
+                suggestionItems.push(`${query} - Block Number`);
+            }
+            
+            // Add some popular suggestions
+            if (query.toLowerCase().includes('uni')) {
+                suggestionItems.push('UNI - Uniswap Token');
+                suggestionItems.push('0x1f9840a85d5af5bf1d1762f925bdaddc4201f984 - UNI Contract');
+            }
+            if (query.toLowerCase().includes('usdc')) {
+                suggestionItems.push('USDC - USD Coin');
+                suggestionItems.push('0xa0b86a33e6b93cf45db9a1e8ee6879be2b21ca4b - USDC Contract');
+            }
+            
+            if (suggestionItems.length > 0) {
+                suggestions.innerHTML = suggestionItems.map(item => 
+                    `<div class="suggestion-item" onclick="selectSuggestion('${item.split(' - ')[0]}')">${item}</div>`
+                ).join('');
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.style.display = 'none';
+            }
+        }
+        
+        function selectSuggestion(value) {
+            document.getElementById('searchInput').value = value;
+            document.getElementById('searchSuggestions').style.display = 'none';
+            performSearch();
+        }
+        
+        function setSearchType(type) {
+            currentSearchType = type;
+            document.querySelectorAll('.search-type').forEach(el => el.style.background = 'rgba(255, 255, 255, 0.1)');
+            event.target.style.background = 'rgba(107, 72, 255, 0.3)';
+        }
+        
+        function updateRecentSearches() {
+            const container = document.getElementById('recentItems');
+            if (recentSearches.length === 0) {
+                document.getElementById('recentSearches').style.display = 'none';
+                return;
+            }
+            
+            container.innerHTML = recentSearches.map(search => {
+                const display = search.length > 20 ? search.slice(0, 8) + '...' + search.slice(-8) : search;
+                return `<div class="recent-item" onclick="searchRecent('${search}')">${display}</div>`;
+            }).join('');
+        }
+        
+        function searchRecent(query) {
+            document.getElementById('searchInput').value = query;
+            performSearch();
+        }
+        
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const button = document.getElementById('searchButton');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsTitle = document.getElementById('resultsTitle');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            // Update recent searches
+            if (!recentSearches.includes(query)) {
+                recentSearches.unshift(query);
+                recentSearches = recentSearches.slice(0, 5);
+                localStorage.setItem('ethereyeRecentSearches', JSON.stringify(recentSearches));
+                updateRecentSearches();
+            }
+            
+            // Show loading
+            button.disabled = true;
+            button.textContent = 'Searching...';
+            resultsSection.style.display = 'block';
+            resultsTitle.textContent = `Searching for "${query}"...`;
+            resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Analyzing blockchain data...</p>
+                </div>
+            `;
+            
+            try {
+                let searchResults;
+                
+                if (apiClient) {
+                    searchResults = await searchBlockchain(query);
+                } else {
+                    // Generate demo results
+                    searchResults = generateDemoResults(query);
+                }
+                
+                displaySearchResults(query, searchResults);
+                
+            } catch (error) {
+                console.error('Search failed:', error);
+                resultsContent.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <h3 style="color: #dc3545;">Search Failed</h3>
+                        <p style="color: rgba(255, 255, 255, 0.7);">${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Search';
+            }
+        }
+        
+        async function searchBlockchain(query) {
+            // Determine search type
+            if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
+                // Address
+                const addressData = await apiClient.getAddress(query);
+                const transactions = await apiClient.getAddressTransactions(query, { limit: 10 });
+                return { type: 'address', data: addressData, transactions };
+            } else if (/^0x[a-fA-F0-9]{64}$/.test(query)) {
+                // Transaction
+                const txData = await apiClient.getTransaction(query);
+                return { type: 'transaction', data: txData };
+            } else if (/^\d+$/.test(query)) {
+                // Block
+                const blockData = await apiClient.getBlock(parseInt(query));
+                return { type: 'block', data: blockData };
+            } else {
+                // Search by name/symbol
+                throw new Error('Token/contract search not yet implemented');
+            }
+        }
+        
+        function generateDemoResults(query) {
+            if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
+                return {
+                    type: 'address',
+                    data: {
+                        address: query,
+                        balance: (Math.random() * 100).toFixed(4),
+                        transaction_count: Math.floor(Math.random() * 1000),
+                        first_seen: new Date(Date.now() - Math.random() * 86400000 * 365).toISOString(),
+                        last_activity: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString()
+                    },
+                    transactions: Array.from({ length: 5 }, (_, i) => ({
+                        hash: '0x' + Math.random().toString(16).substr(2, 16),
+                        from: query,
+                        to: '0x' + Math.random().toString(16).substr(2, 8),
+                        value: (Math.random() * 10).toFixed(4),
+                        timestamp: new Date(Date.now() - i * 3600000).toISOString()
+                    }))
+                };
+            } else if (/^0x[a-fA-F0-9]{64}$/.test(query)) {
+                return {
+                    type: 'transaction',
+                    data: {
+                        hash: query,
+                        from: '0x742d35cc6634c0532925a3b8d4ba26c0c8b0e76e',
+                        to: '0xa0b86a33e6b93cf45db9a1e8ee6879be2b21ca4b',
+                        value: (Math.random() * 100).toFixed(4),
+                        gas_price: Math.floor(Math.random() * 50) + 10,
+                        gas_used: Math.floor(Math.random() * 100000) + 21000,
+                        block_number: Math.floor(Math.random() * 1000000) + 18000000,
+                        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+                        status: Math.random() > 0.1 ? 'success' : 'failed'
+                    }
+                };
+            } else if (/^\d+$/.test(query)) {
+                return {
+                    type: 'block',
+                    data: {
+                        number: parseInt(query),
+                        hash: '0x' + Math.random().toString(16).substr(2, 16),
+                        miner: '0x742d35cc6634c0532925a3b8d4ba26c0c8b0e76e',
+                        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+                        transaction_count: Math.floor(Math.random() * 300),
+                        gas_used: Math.floor(Math.random() * 30000000),
+                        gas_limit: 30000000,
+                        size: Math.floor(Math.random() * 100000) + 50000
+                    }
+                };
+            } else {
+                throw new Error('Invalid search query format');
+            }
+        }
+        
+        function displaySearchResults(query, results) {
+            const resultsTitle = document.getElementById('resultsTitle');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            resultsTitle.textContent = `Results for "${query}"`;
+            
+            if (results.type === 'address') {
+                resultsContent.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <h3 style="color: #6b48ff;">Address Details</h3>
+                            <span class="result-type">Address</span>
+                        </div>
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Address</div>
+                                <div class="detail-value">${results.data.address}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Balance</div>
+                                <div class="detail-value">${results.data.balance} ETH</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Transactions</div>
+                                <div class="detail-value">${results.data.transaction_count}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">First Seen</div>
+                                <div class="detail-value">${new Date(results.data.first_seen).toLocaleDateString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Last Activity</div>
+                                <div class="detail-value">${new Date(results.data.last_activity).toLocaleDateString()}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${results.transactions ? results.transactions.map(tx => `
+                        <div class="result-item">
+                            <div class="result-header">
+                                <h4 style="color: #fff;">Transaction</h4>
+                                <span class="result-type">TX</span>
+                            </div>
+                            <div class="result-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Hash</div>
+                                    <div class="detail-value">${tx.hash}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Value</div>
+                                    <div class="detail-value">${tx.value} ETH</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Time</div>
+                                    <div class="detail-value">${new Date(tx.timestamp).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : ''}
+                `;
+            } else if (results.type === 'transaction') {
+                resultsContent.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <h3 style="color: #6b48ff;">Transaction Details</h3>
+                            <span class="result-type">Transaction</span>
+                        </div>
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Hash</div>
+                                <div class="detail-value">${results.data.hash}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">From</div>
+                                <div class="detail-value">${results.data.from}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">To</div>
+                                <div class="detail-value">${results.data.to}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Value</div>
+                                <div class="detail-value">${results.data.value} ETH</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Gas Price</div>
+                                <div class="detail-value">${results.data.gas_price} gwei</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Gas Used</div>
+                                <div class="detail-value">${results.data.gas_used.toLocaleString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Block</div>
+                                <div class="detail-value">${results.data.block_number}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Status</div>
+                                <div class="detail-value" style="color: ${results.data.status === 'success' ? '#28a745' : '#dc3545'}">${results.data.status}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (results.type === 'block') {
+                resultsContent.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-header">
+                            <h3 style="color: #6b48ff;">Block Details</h3>
+                            <span class="result-type">Block</span>
+                        </div>
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Number</div>
+                                <div class="detail-value">${results.data.number.toLocaleString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Hash</div>
+                                <div class="detail-value">${results.data.hash}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Miner</div>
+                                <div class="detail-value">${results.data.miner}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Transactions</div>
+                                <div class="detail-value">${results.data.transaction_count}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Gas Used</div>
+                                <div class="detail-value">${results.data.gas_used.toLocaleString()} / ${results.data.gas_limit.toLocaleString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Size</div>
+                                <div class="detail-value">${(results.data.size / 1024).toFixed(2)} KB</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Timestamp</div>
+                                <div class="detail-value">${new Date(results.data.timestamp).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadLiveFeed() {
+            const feedItems = document.getElementById('feedItems');
+            
+            // Simulate loading
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const activities = [
+                { 
+                    icon: '💸', 
+                    title: 'Large Transfer Detected', 
+                    details: '1,250 ETH transferred from 0x742d...e76e to 0xa0b8...ca4b',
+                    value: '$3.2M',
+                    time: '2 min ago'
+                },
+                { 
+                    icon: '🧱', 
+                    title: 'New Block Mined', 
+                    details: `Block #${Math.floor(Math.random() * 1000000) + 18000000} with 247 transactions`,
+                    value: '2.4 ETH',
+                    time: '5 min ago'
+                },
+                { 
+                    icon: '📜', 
+                    title: 'Contract Interaction', 
+                    details: 'Uniswap V3 swap: 500 USDC → 0.195 ETH',
+                    value: '$497.50',
+                    time: '8 min ago'
+                },
+                { 
+                    icon: '🪙', 
+                    title: 'Token Transfer', 
+                    details: '10,000 UNI tokens transferred',
+                    value: '$65,400',
+                    time: '12 min ago'
+                }
+            ];
+            
+            feedItems.innerHTML = activities.map(activity => `
+                <div class="feed-item">
+                    <div class="feed-icon">${activity.icon}</div>
+                    <div class="feed-content">
+                        <div class="feed-title">${activity.title}</div>
+                        <div class="feed-details">${activity.details}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="feed-value">${activity.value}</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 5px;">${activity.time}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Auto-refresh every 30 seconds
+            setTimeout(loadLiveFeed, 30000);
+        }
+        
+        function exploreBlocks() {
+            performGenericSearch('latest blocks');
+        }
+        
+        function exploreTransactions() {
+            performGenericSearch('recent transactions');
+        }
+        
+        function exploreContracts() {
+            performGenericSearch('smart contracts');
+        }
+        
+        function exploreTokens() {
+            performGenericSearch('popular tokens');
+        }
+        
+        async function performGenericSearch(type) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsTitle = document.getElementById('resultsTitle');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            resultsSection.style.display = 'block';
+            resultsTitle.textContent = `Exploring ${type}...`;
+            resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading ${type}...</p>
+                </div>
+            `;
+            
+            // Simulate loading
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            resultsTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            resultsContent.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h3 style="color: #6b48ff;">Feature Coming Soon</h3>
+                    <p style="color: rgba(255, 255, 255, 0.7);">
+                        Advanced ${type} exploration will be available in the next update.
+                        Use the search bar above to explore specific addresses, transactions, or blocks.
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Handle URL parameters for direct searches
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const address = urlParams.get('address');
+            const tx = urlParams.get('tx');
+            const block = urlParams.get('block');
+            
+            if (address || tx || block) {
+                const query = address || tx || block;
+                document.getElementById('searchInput').value = query;
+                setTimeout(performSearch, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

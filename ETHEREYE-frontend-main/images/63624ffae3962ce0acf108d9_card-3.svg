@@ -1,0 +1,40 @@
+<svg width="440" height="248" viewBox="0 0 440 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_705_43104)">
+<rect width="440" height="247.5" fill="#1B152B"/>
+<line x1="298.582" y1="256.162" x2="402.526" y2="219.957" stroke="#B785F4"/>
+<line x1="297.204" y1="253.966" x2="398.812" y2="139.511" stroke="#B785F4"/>
+<line x1="294.813" y1="251.707" x2="399.925" y2="75.3524" stroke="#B785F4"/>
+<line x1="292.448" y1="248.26" x2="391.72" y2="19.3496" stroke="#B785F4"/>
+<line x1="167.218" y1="29.8322" x2="280.505" y2="251.735" stroke="#B785F4"/>
+<line x1="174.185" y1="32.1014" x2="276.961" y2="173.419" stroke="#B785F4"/>
+<line x1="174.081" y1="26.1567" x2="268.682" y2="97.3993" stroke="#B785F4"/>
+<line x1="183" y1="20.5" x2="280" y2="20.5" stroke="#B785F4"/>
+<line x1="55.9862" y1="230.468" x2="152.923" y2="264.338" stroke="#B785F4"/>
+<line x1="57.9826" y1="225.8" x2="152.583" y2="190.762" stroke="#B785F4"/>
+<line x1="57.8048" y1="216.57" x2="154.741" y2="120.801" stroke="#B785F4"/>
+<line x1="55.3884" y1="214.339" x2="159.332" y2="34.481" stroke="#B785F4"/>
+<line x1="-62.415" y1="70.5205" x2="39.1932" y2="2.78169" stroke="#B785F4"/>
+<line x1="-62" y1="75.5" x2="34" y2="75.5" stroke="#B785F4"/>
+<line x1="-59.5408" y1="85.6931" x2="39.7316" y2="146.424" stroke="#B785F4"/>
+<line x1="-61.7389" y1="85.818" x2="39.8693" y2="220.128" stroke="#B785F4"/>
+<circle cx="47.5" cy="226.5" r="17" fill="#1B152B" stroke="#B785F4"/>
+<circle cx="285.5" cy="20.5" r="17" fill="#1B152B" stroke="#B785F4"/>
+<path d="M389.5 0.5H425.5V24C425.5 25.933 423.933 27.5 422 27.5H393C391.067 27.5 389.5 25.933 389.5 24V0.5Z" fill="#1B152B" stroke="#B785F4"/>
+<rect x="389.5" y="52.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="389.5" y="122.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="389.5" y="192.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="28.5" y="52.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="147.5" y="86.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="148.5" y="161.5" width="36" height="44" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="266.5" y="86.5" width="36" height="45" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<rect x="267.5" y="161.5" width="37" height="44" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<path d="M28.5 0.5H64.5V16C64.5 17.933 62.933 19.5 61 19.5H32C30.067 19.5 28.5 17.933 28.5 16V0.5Z" fill="#1B152B" stroke="#B785F4"/>
+<rect x="28.5" y="131.5" width="36" height="44" rx="3.5" fill="#1B152B" stroke="#B785F4"/>
+<circle cx="165.5" cy="20.5" r="17" fill="#1B152B" stroke="#B785F4"/>
+</g>
+<defs>
+<clipPath id="clip0_705_43104">
+<rect width="440" height="247.5" fill="white"/>
+</clipPath>
+</defs>
+</svg>

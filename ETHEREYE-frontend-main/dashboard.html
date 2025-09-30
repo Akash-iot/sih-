@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ETHER-EYE | Enhanced Analytics Dashboard</title>
+    <meta name="description" content="Real-time blockchain analytics dashboard with interactive charts and live data" />
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include API Client -->
+    <script src="js/api-client.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex; 
+        }
+        
+        /* Enhanced Sidebar */
+        .sidebar { 
+            width: 240px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px);
+            color: #333; padding: 25px; height: 100vh; position: fixed; top: 0; left: 0; 
+            overflow-y: auto; box-shadow: 2px 0 20px rgba(0,0,0,0.1); 
+        }
+        .sidebar .logo { 
+            display: flex; align-items: center; margin-bottom: 35px; font-size: 24px; 
+            font-weight: bold; color: #667eea; 
+        }
+        .sidebar .logo::before { content: "📊"; margin-right: 12px; font-size: 28px; }
+        .sidebar h3 { 
+            font-size: 12px; text-transform: uppercase; margin: 25px 0 15px 0; 
+            color: #666; letter-spacing: 1px; font-weight: 600;
+        }
+        .sidebar ul { list-style: none; }
+        .sidebar ul li { margin-bottom: 10px; }
+        .sidebar ul li a { 
+            display: flex; align-items: center; color: #555; text-decoration: none; 
+            padding: 15px 20px; border-radius: 12px; transition: all 0.3s ease; font-size: 14px;
+            background: transparent; border-left: 3px solid transparent;
+        }
+        .sidebar ul li a:hover, .sidebar ul li a.active { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+            transform: translateX(5px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            border-left: 3px solid #fff;
+        }
+        .sidebar ul li a::before { margin-right: 12px; font-size: 18px; }
+        .sidebar ul li a.dashboard::before { content: "📊"; }
+        .sidebar ul li a.wallets::before { content: "👛"; }
+        .sidebar ul li a.traces::before { content: "🔍"; }
+        .sidebar ul li a.analytics::before { content: "📈"; }
+        .sidebar ul li a.spider-map::before { content: "🕸️"; }
+        .sidebar ul li a.explorer::before { content: "🌐"; }
+        .sidebar ul li a.settings::before { content: "⚙️"; }
+        
+        /* Enhanced Content */
+        .content { 
+            margin-left: 240px; padding: 25px; flex: 1; 
+            background: rgba(255, 255, 255, 0.95); min-height: 100vh;
+        }
+        
+        /* Enhanced Header */
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 35px; padding: 25px; background: white; border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); backdrop-filter: blur(10px);
+        }
+        .header h1 { 
+            font-size: 32px; font-weight: 700; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-controls { display: flex; gap: 15px; align-items: center; }
+        .refresh-btn, .export-btn { 
+            padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; 
+            font-size: 14px; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
+        }
+        .refresh-btn { 
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; 
+        }
+        .export-btn { 
+            background: linear-gradient(135deg, #6f42c1 0%, #6610f2 100%); color: white; 
+        }
+        .refresh-btn:hover, .export-btn:hover { 
+            transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); 
+        }
+        
+        /* Enhanced Stats Cards */
+        .stats-container { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 25px; margin-bottom: 35px; 
+        }
+        .stat-card { 
+            background: white; border-radius: 15px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; overflow: hidden;
+            transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-card:hover { 
+            transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); 
+        }
+        .stat-card::before { 
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .stat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stat-icon { 
+            font-size: 32px; padding: 12px; border-radius: 12px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
+        }
+        .stat-trend { 
+            font-size: 12px; padding: 4px 8px; border-radius: 20px; font-weight: 600; 
+        }
+        .trend-up { background: #d4edda; color: #155724; }
+        .trend-down { background: #f8d7da; color: #721c24; }
+        .stat-value { 
+            font-size: 28px; font-weight: 700; color: #333; margin-bottom: 5px; 
+        }
+        .stat-label { 
+            font-size: 14px; color: #666; font-weight: 500; 
+        }
+        .stat-change { 
+            font-size: 12px; margin-top: 8px; display: flex; align-items: center; gap: 4px; 
+        }
+        
+        /* Enhanced Charts */
+        .charts-container { 
+            display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 35px; 
+        }
+        .chart-card { 
+            background: white; border-radius: 15px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+        .chart-header { 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; 
+        }
+        .chart-title { 
+            font-size: 18px; font-weight: 600; color: #333; 
+        }
+        .chart-period { 
+            display: flex; gap: 10px; 
+        }
+        .period-btn { 
+            padding: 6px 12px; border: 1px solid #dee2e6; border-radius: 6px; 
+            background: white; cursor: pointer; font-size: 12px; transition: all 0.2s ease; 
+        }
+        .period-btn.active, .period-btn:hover { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; 
+        }
+        
+        /* Activity Feed */
+        .activity-container { 
+            background: white; border-radius: 15px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 25px; 
+        }
+        .activity-header { 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; 
+        }
+        .activity-item { 
+            display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f3f4; 
+            transition: all 0.2s ease; 
+        }
+        .activity-item:hover { background: #f8f9ff; margin: 0 -15px; padding: 15px; border-radius: 8px; }
+        .activity-icon { 
+            font-size: 20px; margin-right: 15px; width: 40px; height: 40px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+            border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+        }
+        .activity-content { flex: 1; }
+        .activity-title { font-weight: 600; color: #333; margin-bottom: 4px; }
+        .activity-desc { font-size: 13px; color: #666; }
+        .activity-time { font-size: 12px; color: #999; }
+        
+        /* Loading States */
+        .loading-spinner { 
+            width: 40px; height: 40px; border: 4px solid #f3f3f3; 
+            border-top: 4px solid #667eea; border-radius: 50%; 
+            animation: spin 1s linear infinite; margin: 20px auto; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Status Indicators */
+        .status-indicator { 
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; 
+            border-radius: 20px; font-size: 12px; font-weight: 600; 
+        }
+        .status-online { background: #d4edda; color: #155724; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+        .status-warning { background: #fff3cd; color: #856404; }
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .charts-container { grid-template-columns: 1fr; }
+            .stats-container { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .content { margin-left: 0; }
+            .header { flex-direction: column; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">ETHER-EYE</div>
+        <h3>Navigation</h3>
+        <ul>
+            <li><a href="dashboard.html" class="dashboard active">Dashboard</a></li>
+            <li><a href="wallets.html" class="wallets">Wallets</a></li>
+            <li><a href="traces.html" class="traces">Transaction Traces</a></li>
+            <li><a href="analytics.html" class="analytics">Analytics</a></li>
+            <li><a href="spider-map.html" class="spider-map">Spider Map</a></li>
+            <li><a href="explorer.html" class="explorer">Explorer</a></li>
+            <li><a href="settings.html" class="settings">Settings</a></li>
+        </ul>
+    </div>
+
+    <div class="content">
+        <div class="header">
+            <h1>Analytics Dashboard</h1>
+            <div class="header-controls">
+                <span id="connectionStatus" class="status-indicator status-warning">⏳ Connecting...</span>
+                <button class="refresh-btn" onclick="refreshDashboard()">
+                    <span>🔄</span> Refresh Data
+                </button>
+                <button class="export-btn" onclick="exportData()">
+                    <span>📊</span> Export Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Real-time Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">⛽</div>
+                    <div class="stat-trend trend-up" id="gasTrend">↗ +2.5%</div>
+                </div>
+                <div class="stat-value" id="gasPrice">Loading...</div>
+                <div class="stat-label">Average Gas Price (gwei)</div>
+                <div class="stat-change">
+                    <span id="gasChange">Last updated: Never</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-trend trend-up" id="ethTrend">↗ +1.8%</div>
+                </div>
+                <div class="stat-value" id="ethPrice">Loading...</div>
+                <div class="stat-label">Ethereum Price (USD)</div>
+                <div class="stat-change">
+                    <span id="ethChange">24h change: Loading...</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-trend trend-up">↗ +5.2%</div>
+                </div>
+                <div class="stat-value" id="totalTransactions">1,234,567</div>
+                <div class="stat-label">Total Transactions</div>
+                <div class="stat-change">
+                    <span>+45,678 in last 24h</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">🔗</div>
+                    <div class="stat-trend trend-up">↗ +0.5%</div>
+                </div>
+                <div class="stat-value" id="blockHeight">18,500,000</div>
+                <div class="stat-label">Current Block Height</div>
+                <div class="stat-change">
+                    <span>Latest block: 2 min ago</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Charts -->
+        <div class="charts-container">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Gas Price Trends</h3>
+                    <div class="chart-period">
+                        <button class="period-btn active" onclick="updateChart('1h')">1H</button>
+                        <button class="period-btn" onclick="updateChart('24h')">24H</button>
+                        <button class="period-btn" onclick="updateChart('7d')">7D</button>
+                        <button class="period-btn" onclick="updateChart('30d')">30D</button>
+                    </div>
+                </div>
+                <canvas id="gasPriceChart" height="300"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Price Distribution</h3>
+                </div>
+                <canvas id="priceDistributionChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- Live Activity Feed -->
+        <div class="activity-container">
+            <div class="activity-header">
+                <h3 class="chart-title">🔴 Live Activity Feed</h3>
+                <button class="period-btn" onclick="pauseActivity()" id="pauseBtn">⏸️ Pause</button>
+            </div>
+            <div id="activityFeed">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let gasPriceChart, priceDistributionChart;
+        let activityPaused = false;
+        let apiClient = null;
+
+        // Initialize dashboard
+        window.addEventListener('load', async () => {
+            if (window.ethereyeApi) {
+                apiClient = window.ethereyeApi;
+                await initializeDashboard();
+            } else {
+                console.error('API client not loaded');
+                updateConnectionStatus(false);
+            }
+        });
+
+        async function initializeDashboard() {
+            try {
+                updateConnectionStatus(true);
+                
+                // Initialize charts
+                initializeCharts();
+                
+                // Load initial data
+                await loadRealTimeData();
+                await loadActivityFeed();
+                
+                // Start real-time updates
+                startRealTimeUpdates();
+                
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'status-indicator status-online';
+                statusElement.innerHTML = '✅ Connected';
+            } else {
+                statusElement.className = 'status-indicator status-offline';
+                statusElement.innerHTML = '❌ Disconnected';
+            }
+        }
+
+        // Load real-time data from API
+        async function loadRealTimeData() {
+            try {
+                // Load gas prices
+                const gasData = await apiClient.getLiveGas();
+                document.getElementById('gasPrice').textContent = gasData.standard_gas_price;
+                document.getElementById('gasChange').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                // Load crypto prices
+                const pricesData = await apiClient.getLiveCryptoPrices();
+                if (pricesData.prices && pricesData.prices.length > 0) {
+                    const ethPrice = pricesData.prices.find(p => p.coin_id === 'ethereum');
+                    if (ethPrice) {
+                        document.getElementById('ethPrice').textContent = `$${ethPrice.price.toLocaleString()}`;
+                        document.getElementById('ethChange').textContent = `24h change: ${ethPrice.change_24h.toFixed(2)}%`;
+                        
+                        // Update trend indicator
+                        const ethTrend = document.getElementById('ethTrend');
+                        if (ethPrice.change_24h > 0) {
+                            ethTrend.className = 'stat-trend trend-up';
+                            ethTrend.textContent = `↗ +${ethPrice.change_24h.toFixed(2)}%`;
+                        } else {
+                            ethTrend.className = 'stat-trend trend-down';
+                            ethTrend.textContent = `↘ ${ethPrice.change_24h.toFixed(2)}%`;
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error('Failed to load real-time data:', error);
+            }
+        }
+
+        // Initialize Chart.js charts
+        function initializeCharts() {
+            // Gas Price Chart
+            const gasCtx = document.getElementById('gasPriceChart').getContext('2d');
+            gasPriceChart = new Chart(gasCtx, {
+                type: 'line',
+                data: {
+                    labels: generateTimeLabels(),
+                    datasets: [{
+                        label: 'Gas Price (gwei)',
+                        data: generateSampleData(24),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: '#f1f3f4' }
+                        },
+                        x: {
+                            grid: { color: '#f1f3f4' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Price Distribution Chart
+            const distCtx = document.getElementById('priceDistributionChart').getContext('2d');
+            priceDistributionChart = new Chart(distCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Safe', 'Standard', 'Fast'],
+                    datasets: [{
+                        data: [30, 45, 25],
+                        backgroundColor: ['#28a745', '#667eea', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate sample time labels
+        function generateTimeLabels() {
+            const labels = [];
+            for (let i = 23; i >= 0; i--) {
+                const date = new Date();
+                date.setHours(date.getHours() - i);
+                labels.push(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+            }
+            return labels;
+        }
+
+        // Generate sample data points
+        function generateSampleData(count) {
+            const data = [];
+            let baseValue = 15;
+            for (let i = 0; i < count; i++) {
+                baseValue += (Math.random() - 0.5) * 3;
+                data.push(Math.max(5, Math.round(baseValue * 100) / 100));
+            }
+            return data;
+        }
+
+        // Load activity feed
+        async function loadActivityFeed() {
+            const feedElement = document.getElementById('activityFeed');
+            
+            try {
+                // Generate sample activity items
+                const activities = [
+                    { icon: '📤', title: 'Large Transaction Detected', desc: '50 ETH transferred to 0x742d...e76e', time: '2 min ago' },
+                    { icon: '🔍', title: 'New Block Mined', desc: 'Block #18,500,001 with 150 transactions', time: '3 min ago' },
+                    { icon: '⚠️', title: 'High Gas Alert', desc: 'Gas price spiked to 45 gwei', time: '5 min ago' },
+                    { icon: '🔗', title: 'Smart Contract Interaction', desc: 'Uniswap V3 swap executed', time: '7 min ago' },
+                    { icon: '💰', title: 'Price Movement', desc: 'ETH price increased by 2.5%', time: '10 min ago' }
+                ];
+
+                feedElement.innerHTML = activities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-icon">${activity.icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-desc">${activity.desc}</div>
+                        </div>
+                        <div class="activity-time">${activity.time}</div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                feedElement.innerHTML = '<div class="activity-item">Failed to load activity feed</div>';
+            }
+        }
+
+        // Start real-time updates
+        function startRealTimeUpdates() {
+            // Update every 30 seconds
+            setInterval(async () => {
+                if (!activityPaused) {
+                    await loadRealTimeData();
+                    updateChartData();
+                }
+            }, 30000);
+        }
+
+        // Update chart data with new point
+        function updateChartData() {
+            if (gasPriceChart) {
+                // Add new data point
+                const newValue = 15 + (Math.random() - 0.5) * 5;
+                gasPriceChart.data.datasets[0].data.push(newValue);
+                gasPriceChart.data.labels.push(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+                
+                // Keep only last 24 points
+                if (gasPriceChart.data.datasets[0].data.length > 24) {
+                    gasPriceChart.data.datasets[0].data.shift();
+                    gasPriceChart.data.labels.shift();
+                }
+                
+                gasPriceChart.update('none');
+            }
+        }
+
+        // Control functions
+        async function refreshDashboard() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span>⟳</span> Refreshing...';
+            btn.disabled = true;
+            
+            try {
+                await loadRealTimeData();
+                await loadActivityFeed();
+                updateChartData();
+            } catch (error) {
+                console.error('Refresh failed:', error);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function exportData() {
+            // Generate CSV data
+            const csvData = [
+                ['Timestamp', 'Gas Price', 'ETH Price'],
+                ...gasPriceChart.data.labels.map((label, i) => [
+                    label, 
+                    gasPriceChart.data.datasets[0].data[i], 
+                    '2450.50'
+                ])
+            ];
+            
+            const csvContent = csvData.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `ethereye-dashboard-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function pauseActivity() {
+            const btn = document.getElementById('pauseBtn');
+            activityPaused = !activityPaused;
+            btn.innerHTML = activityPaused ? '▶️ Resume' : '⏸️ Pause';
+        }
+
+        function updateChart(period) {
+            // Update active button
+            document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update chart based on period
+            const dataPoints = period === '1h' ? 12 : period === '24h' ? 24 : period === '7d' ? 7 : 30;
+            gasPriceChart.data.labels = generateTimeLabels(dataPoints);
+            gasPriceChart.data.datasets[0].data = generateSampleData(dataPoints);
+            gasPriceChart.update();
+        }
+    </script>
+</body>
+</html>

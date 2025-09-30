@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHEREYE API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 ETHEREYE API Connection Test</h1>
+        <p>Testing connection to: <strong>http://127.0.0.1:8001</strong></p>
+        
+        <div>
+            <button onclick="testHealth()">Test Health</button>
+            <button onclick="testCryptoPrices()">Test Crypto Prices</button>
+            <button onclick="testGasPrices()">Test Gas Prices</button>
+            <button onclick="testAnalytics()">Test Analytics</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8001';
+        
+        function addResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<h3>${title}</h3>${JSON.stringify(data, null, 2)}`;
+            results.appendChild(div);
+        }
+        
+        function addError(title, error) {
+            addResult(title, { error: error.message }, true);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult('Health Check', data);
+            } catch (error) {
+                addError('Health Check Failed', error);
+            }
+        }
+        
+        async function testCryptoPrices() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/live/prices`);
+                const data = await response.json();
+                addResult('Crypto Prices', data);
+            } catch (error) {
+                addError('Crypto Prices Failed', error);
+            }
+        }
+        
+        async function testGasPrices() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/live/gas`);
+                const data = await response.json();
+                addResult('Gas Prices', data);
+            } catch (error) {
+                addError('Gas Prices Failed', error);
+            }
+        }
+        
+        async function testAnalytics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/analytics/overview`);
+                const data = await response.json();
+                addResult('Analytics Overview', data);
+            } catch (error) {
+                addError('Analytics Failed', error);
+            }
+        }
+        
+        // Auto-run health check on load
+        window.addEventListener('load', testHealth);
+    </script>
+</body>
+</html>
